@@ -1,6 +1,6 @@
 ---
-title: Weaviate で RBAC を設定する
-description: Weaviate で RBAC (Role Based Access Control) を設定する方法を学びます
+title: Weaviate での RBAC 設定
+description: Weaviate で RBAC （ロールベースアクセス制御）を設定する方法を学びます
 image: og/docs/tutorials.jpg
 # tags: ['basics']
 ---
@@ -15,46 +15,53 @@ import RolePyCode from '!!raw-loader!/_includes/code/python/howto.configure.rbac
 import UserPyCode from '!!raw-loader!/_includes/code/python/howto.configure.rbac.users.py';
 import RoleTSCode from '!!raw-loader!/_includes/code/typescript/howto.configure.rbac.roles.ts';
 
-**Role-Based Access Control (RBAC)** は、Weaviate インスタンスへのアクセスと変更を管理できる強力なセキュリティ機構です。ここでは、権限を細かく設定したロールを定義し、それらをユーザーに割り当てることで Weaviate で RBAC を設定する方法を解説します。これにより、データの読み書きからコレクションやテナントの管理まで、特定の操作を実行できるユーザーを限定することができます。
+**Role-Based Access Control (RBAC)** は、Weaviate インスタンスへのアクセスと変更を管理できる強力なセキュリティ機構です。  
+このチュートリアルでは、細かく調整した権限を持つロールを定義し、それらをユーザーに割り当てることで Weaviate に RBAC を設定する方法を学びます。  
+データの読み書きからコレクションやテナントの管理まで、操作ごとに権限を制御し、許可されたユーザーだけが特定の操作を実行できるようにします。
 
-## 導入
+これから行うステップは次のとおりです。
 
-以下のステップを順に説明します。
-
-- **ステップ 1: Weaviate への接続**  
-  必要なロール管理権限を持つユーザーで認証されていることを確認します。
-- **ステップ 2: カスタムロールの作成**  
-  読み取り、書き込み、テナント管理など、特定の権限を持つロールを定義します。
-- **ステップ 3: 新しいユーザーへのロール割り当て**  
-  これらのロールを新規ユーザーに適用し、リソースごとのアクセスを制限します。
+1. **Weaviate への接続**  
+   必要なロール管理権限を持つユーザーで認証されていることを確認します。  
+2. **カスタムロールの作成**  
+   読み取り、書き込み、テナント管理などの特定の権限を持つロールを定義します。  
+3. **ロールを新規ユーザーに割り当てる**  
+   これらのロールを新しいユーザーに適用し、リソースごとのアクセスを制限します。
 
 ![RBAC Tutorial Diagram](./imgs/rbac-tutorial-diagram.png)
 
-このガイドを終える頃には、Weaviate デプロイに RBAC を実装するための明確な手順を理解し、AI 搭載アプリケーションに不可欠なセキュリティ層を追加できるようになります。
+本ガイドを終える頃には、Weaviate デプロイメントに RBAC を実装するための明確な手順を理解し、AI 対応アプリケーションに不可欠なセキュリティ層を追加できるようになります。
 
 ---
 
-作成するロールは次のとおりです。
+次のロールを作成します。
 
-- **[読み取りおよび書き込み権限](#read-and-write-permissions):** `rw_role`  
-  コレクションとデータへの読み取り・書き込みアクセスを許可するカスタムロールを作成し、ユーザーに割り当てる方法を学びます。
+- **[読み取り・書き込み権限](#read-and-write-permissions):** `rw_role`  
+  コレクションとデータへの読み取りおよび書き込みアクセスを許可するカスタムロールを作成し、ユーザーに割り当てる方法を学びます。
 - **[閲覧権限](#viewer-permissions):** `viewer_role`  
-  特定のコレクションに対して読み取り専用アクセスに制限するロールを設定します。
+  特定のコレクションに対して読み取り専用アクセスに制限するロールを作成します。
 - **[テナント権限](#tenant-permissions):** `tenant_manager`  
-  テナントの作成、読み取り、更新を含む管理権限を持つロールを構成します。
+  テナントの作成、読み取り、更新を行う権限を持つロールを設定します。
 
 ## 前提条件
 
-このチュートリアルを始める前に、次のものを用意してください。
+開始前に次のものを用意してください。
 
-- ローカルで Weaviate インスタンスを実行するための Docker  
-- お好みの Weaviate [クライアントライブラリ](/weaviate/client-libraries/index.mdx) がインストールされていること
+- ローカルで Weaviate インスタンスを実行するための Docker
+- お好みの Weaviate [クライアントライブラリ](/weaviate/client-libraries/index.mdx)
 
 ### ローカルインスタンス - `root` ユーザー
 
-このチュートリアルを進めるには、`root` ロールが割り当てられているユーザーで Weaviate に接続する必要があります。これにより、ロールと権限を管理できます。
+このチュートリアルを進めるには、`root` ロールが割り当てられたユーザーで Weaviate に接続する必要があります。これにより、ロールと権限を管理できます。
 
-`docker-compose.yml` という Docker Compose ファイルを作成し、次の設定をコピーしてください。
+Docker Compose ファイル（`docker-compose.yml`）を作成し、次の設定をコピーしてください。
+
+:::info
+この設定に含まれる環境変数は以下を行います。
+
+- RBAC を有効化します。
+- `root-user` を組み込みの root / admin 権限を持つユーザーとして設定します。
+:::
 
 ```yaml
 ---
@@ -80,28 +87,43 @@ services:
       ENABLE_API_BASED_MODULES: 'true'
       CLUSTER_HOSTNAME: 'node1'
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
-      AUTHENTICATION_DB_USERS_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'root-user-key'
-      AUTHENTICATION_APIKEY_USERS: 'root-user'
       AUTHORIZATION_ENABLE_RBAC: 'true'
       AUTHORIZATION_RBAC_ROOT_USERS: 'root-user'
+      AUTHENTICATION_DB_USERS_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_USERS: 'root-user'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'root-user-key'
+ 
 volumes:
   weaviate_data:
 ```
+:::info
+<details>
+  <summary> RBAC 関連の環境変数 </summary>
 
-この設定内の環境変数は以下を行います。
+- `AUTHORIZATION_ENABLE_RBAC`: RBAC を有効にします。  
+- `AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED`: 匿名ユーザーによる Weaviate インスタンスへのアクセスを有効 / 無効にします。  
+- `AUTHENTICATION_DB_USERS_ENABLED`: 実行時ユーザー管理を有効 / 無効にします。  
+- `AUTHENTICATION_APIKEY_ENABLED`: API キーによる認証を有効にします。  
+- `AUTHENTICATION_APIKEY_USERS`: `AUTHENTICATION_APIKEY_ENABLED` 変数に対応する API キー認証のユーザー ID。  
+- `AUTHENTICATION_APIKEY_ALLOWED_KEYS`: 特定のユーザー ID に対応する許可された API キー。  
+- `AUTHORIZATION_RBAC_ROOT_USERS`: root / admin ユーザーを定義します。  
 
-- RBAC を有効化します。
-- `root-user` を組み込みの root / 管理者権限を持つユーザーとして設定します。
+その他の環境変数については [こちら](../configuration/env-vars/index.md) を参照してください。
+</details>
 
-まず `root-user` で Weaviate に接続し、新しいロールを作成したら `custom-user` というユーザーを作成し、そのロールを割り当てます。
+:::
 
-## 読み取り/書き込み権限
 
-### ステップ 1: Weaviate 接続
 
-ロールを管理できる十分な権限を持つユーザーで Weaviate に接続していることを確認してください。これは、[Weaviate 設定](/deploy/configuration/configuring-rbac.md) 時に組み込みの `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles.mdx#role-management-permissions) を付与することで実現できます。
+`root-user` で Weaviate に接続した後、新しいロールを作成し、新しいユーザー `custom-user` を作成してそのロールを割り当てます。
+
+## 読み取り・書き込み権限
+
+### Step 1: Weaviate への接続
+
+ロールを管理できる十分な権限を持つユーザーで Weaviate に接続していることを確認します。  
+これは、[Weaviate の設定](/deploy/configuration/configuring-rbac.md)時にあらかじめ定義された `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles.mdx#role-management-permissions) を付与することで実現できます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -136,9 +158,11 @@ volumes:
   </TabItem>
 </Tabs>
 
-### ステップ 2: カスタム権限付きロールの作成
 
-このロールは `TargetCollection` で始まるコレクションに対して読み取り・書き込み権限を付与し、ノードとクラスターメタデータに対して読み取り権限を付与します。
+
+### ステップ 2: カスタム権限付き新規ロール作成
+
+この設定により、`TargetCollection` で始まるコレクションに対して読み取りおよび書き込み権限が、ノードとクラスターのメタデータに対して読み取り権限が付与されます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -172,8 +196,6 @@ volumes:
 
   </TabItem>
 </Tabs>
-
-
 
 ### ステップ 3: 新しいユーザーへのロール割り当て
 
@@ -211,7 +233,7 @@ volumes:
   </TabItem>
 </Tabs>
 
-次に、`custom-user` にロール `rw_role` を割り当てます:
+次に、ロール `rw_role` を `custom-user` に割り当てます:
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -246,12 +268,12 @@ volumes:
   </TabItem>
 </Tabs>
 
-## ビューアー権限
+## 閲覧者権限
 
 ### ステップ 1: Weaviate への接続
 
-ロールを管理する十分な権限を持つユーザーで Weaviate に接続していることを確認します。  
-これは、[Weaviate の設定](/deploy/configuration/configuring-rbac) 時にあらかじめ定義されている `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles#role-management) を付与することで実現できます。
+ロールを管理するのに十分な権限を持つユーザーで Weaviate に接続していることを確認してください。  
+これは、[Weaviate の設定](/deploy/configuration/configuring-rbac) であらかじめ定義されている `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles#role-management) を付与することで実現できます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -286,9 +308,11 @@ volumes:
   </TabItem>
 </Tabs>
 
-### ステップ 2: カスタム権限を持つ新しいロールの作成
 
-これにより、`TargetCollection` で始まるコレクションに対するビューアー権限が付与されます。
+
+### ステップ 2: カスタム権限を持つ新規ロールの作成
+
+これにより、`TargetCollection` で始まるコレクションに対して viewer 権限が付与されます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -323,9 +347,9 @@ volumes:
   </TabItem>
 </Tabs>
 
-### ステップ 3: 新規ユーザーへのロール割り当て
+### ステップ 3: 新規ユーザーへのロールの割り当て
 
-最初に、新しいユーザー `custom-user` を作成します:
+まず、新しいユーザー `custom-user` を作成します:
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -359,7 +383,7 @@ volumes:
   </TabItem>
 </Tabs>
 
-次に、`viewer_role` を `custom-user` に割り当てます:
+次に、`custom-user` にロール `viewer_role` を割り当てます:
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -398,8 +422,8 @@ volumes:
 
 ### ステップ 1: Weaviate への接続
 
-ロールを管理できる十分な権限を持つユーザーで Weaviate に接続されていることを確認してください。  
-これは、[Weaviate 構成](/deploy/configuration/configuring-rbac.md) で用意されている `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles.mdx#role-management-permissions) を付与することで達成できます。
+ロールを管理できる十分な権限を持つユーザーで Weaviate に接続していることを確認してください。  
+これは、[Weaviate の設定](/deploy/configuration/configuring-rbac.md) 時にあらかじめ定義されている `root` ロールを使用するか、ユーザーに [`manage_roles` 権限](/weaviate/configuration/rbac/manage-roles.mdx#role-management-permissions) を付与することで実現できます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -434,11 +458,11 @@ volumes:
   </TabItem>
 </Tabs>
 
-### ステップ 2: カスタム権限を持つ新規ロールの作成
+### ステップ 2: カスタム権限を持つ新しいロールの作成
 
-このロールは以下の権限を付与します:
-- `TargetCollection` で始まるコレクション内の `TargetTenant` で始まるテナントを完全に管理
-- `TargetCollection` で始まるコレクション内の `TargetTenant` で始まるテナントのデータを作成、読み取り、更新、および削除
+このロールにより、以下の権限が付与されます:
+- `TargetCollection` で始まるコレクション内において、`TargetTenant` で始まるテナントを完全に管理できます。
+- `TargetCollection` で始まるコレクション内において、`TargetTenant` で始まるテナントのデータを作成・読み取り・更新・削除できます。
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -475,7 +499,7 @@ volumes:
 
 ### ステップ 3: 新規ユーザーへのロール割り当て
 
-まず、`custom-user` という新しいユーザーを作成します:
+まず、新しいユーザー `custom-user` を作成します:
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -509,7 +533,7 @@ volumes:
   </TabItem>
 </Tabs>
 
-次に、`tenant_manager` ロールを `custom-user` に割り当てます:
+次に、`custom-user` にロール `tenant_manager` を割り当てます:
 
 <Tabs groupId="languages">
   <TabItem value="py" label="Python Client v4">
@@ -544,17 +568,17 @@ volumes:
   </TabItem>
 </Tabs>
 
-## 概要
+## まとめ
 
-このチュートリアルは、 Weaviate における RBAC の設定方法を包括的に解説し、カスタマイズしたロールとパーミッションによってユーザー アクセスを管理し、ベクトル データベースのセキュリティを強化する方法を紹介します。
+本チュートリアルでは、 Weaviate の RBAC を設定してユーザーアクセスをカスタマイズしたロールと権限で管理し、ベクトルデータベースを安全に運用する方法を包括的に解説しました。
 
-ロール管理権限を持つユーザーで Weaviate に接続するところから始め、さまざまなアクセス レベル向けにカスタム ロールを作成する手順を示します。コレクションとデータを管理するための読み取り・書き込み権限を持つロールの設定、読み取り専用アクセスのための viewer パーミッションの構成、そしてテナント操作を管理する tenant パーミッションの確立方法を学べます。
+ロール管理権限を持つユーザーで Weaviate に接続する手順を示し、その後さまざまなアクセスレベルに合わせてカスタムロールを作成する方法を紹介しました。コレクションとデータを管理できる読取・書込権限を持つロール、閲覧専用のビューアー権限、テナント操作を管理するテナント権限の設定方法を学べます。
 
 ## 追加リソース
 
-- [RBAC: 設定](/deploy/configuration/configuring-rbac.md)
-- [RBAC: ロールの管理](/weaviate/configuration/rbac/manage-roles.mdx)
-- [RBAC: ユーザーの管理](/weaviate/configuration/rbac/manage-users.mdx)
+- [ RBAC：設定](/deploy/configuration/configuring-rbac.md)
+- [ RBAC：ロール管理](/weaviate/configuration/rbac/manage-roles.mdx)
+- [ RBAC：ユーザー管理](/weaviate/configuration/rbac/manage-users.mdx)
 
 ## 質問とフィードバック
 
