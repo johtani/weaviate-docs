@@ -1,6 +1,5 @@
 ---
 title: クエリ エージェント
-sidebar_position: 10
 description: "自然言語理解を用いて複数の Weaviate コレクションにわたる複雑なクエリを処理する AI エージェントの概要。"
 image: og/docs/agents.jpg
 # tags: ['agents', 'getting started', 'query agent']
@@ -9,72 +8,69 @@ image: og/docs/agents.jpg
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import FilteredTextBlock from '@site/src/components/Documentation/FilteredTextBlock';
-import PyCode from '!!raw-loader!/docs/agents/_includes/query_agent.py';
-import TSCode from '!!raw-loader!/docs/agents/_includes/query_agent.mts';
+import PyCode from '!!raw-loader!/docs/agents/\_includes/query_agent.py';
+import TSCode from '!!raw-loader!/docs/agents/\_includes/query_agent.mts';
 
-# Weaviate Query Agent：概要
+# Weaviate クエリ エージェント: 概要
 
-:::caution Technical Preview
+ Weaviate クエリ エージェント は、 Weaviate Cloud に保存されたデータを基に自然言語クエリへ回答するために設計された、あらかじめ構築済みのエージェント型サービスです。
 
-![この Weaviate エージェントはテクニカルプレビューです。](../_includes/agents_tech_preview_light.png#gh-light-mode-only "この Weaviate エージェントはテクニカルプレビューです。")
-![この Weaviate エージェントはテクニカルプレビューです。](../_includes/agents_tech_preview_dark.png#gh-dark-mode-only "この Weaviate エージェントはテクニカルプレビューです。")
+ユーザーは自然言語でプロンプト／質問を入力するだけで、 クエリ エージェント が必要な処理をすべて行い、回答を返します。
 
-[こちらから登録して](https://events.weaviate.io/weaviate-agents) Weaviate エージェントの通知を受け取るか、最新情報の確認とフィードバックの送信は [こちらのページ](https://weaviateagents.featurebase.app/) をご覧ください。
-
-:::
-
-Weaviate Query Agent は、Weaviate Cloud に保存されたデータを基に自然言語クエリへ回答するための、あらかじめ構築されたエージェントサービスです。
-
-ユーザーは自然言語でプロンプト／質問を入力するだけで、Query Agent がその間のすべてのステップを自動で処理し、回答を返します。
-
-![ユーザー視点から見た Weaviate Query Agent](../_includes/query_agent_usage_light.png#gh-light-mode-only "ユーザー視点から見た Weaviate Query Agent")
-![ユーザー視点から見た Weaviate Query Agent](../_includes/query_agent_usage_dark.png#gh-dark-mode-only "ユーザー視点から見た Weaviate Query Agent")
-
-:::info Changelog and feedback
-Weaviate エージェントの公式変更履歴は [こちら](https://weaviateagents.featurebase.app/changelog) で確認できます。機能追加のご要望やバグ報告、ご質問などのフィードバックは [こちら](https://weaviateagents.featurebase.app/) からお送りください。送信したフィードバックのステータスや他のフィードバックへの投票も可能です。
-:::
+![Weaviate Query Agent from a user perspective](../_includes/query_agent_usage_light.png#gh-light-mode-only "Weaviate Query Agent from a user perspective")
+![Weaviate Query Agent from a user perspective](../_includes/query_agent_usage_dark.png#gh-dark-mode-only "Weaviate Query Agent from a user perspective")
 
 ## アーキテクチャ
 
-Query Agent は Weaviate Cloud 上のサービスとして提供されます。
+ クエリ エージェント は Weaviate Cloud のサービスとして提供されます。
 
-ユーザーがプロンプト／クエリを送信すると、Query Agent はそれと既知のコンテキストを解析し、自律的に検索を実行します。
+ユーザーがプロンプト／クエリを入力すると、 クエリ エージェント はそれと既知のコンテキストを解析し、自律的に検索を実行します。
 
-:::tip Query Agent のコンテキスト
-Query Agent はコレクションおよびプロパティの説明を解析し、関連するクエリの構築方法をより深く理解します。<br/>
+:::tip Query Agent context
+ クエリ エージェント は、コレクションとプロパティの説明を解析して、関連するクエリをどのように構築すべきかを理解します。<br/>
 
-コンテキストには会話履歴やその他の関連情報も含まれる場合があります。
+コンテキストには、以前の会話履歴やその他の関連情報が含まれる場合もあります。
 :::
 
-## Query Agent：ワークフローの可視化
+## クエリ エージェント: ワークフローの可視化
 
-![高レベルでの Weaviate Query Agent](../_includes/query_agent_architecture_light.png#gh-light-mode-only "高レベルでの Weaviate Query Agent")
-![高レベルでの Weaviate Query Agent](../_includes/query_agent_architecture_dark.png#gh-dark-mode-only "高レベルでの Weaviate Query Agent")
+![Weaviate Query Agent at a high level](../_includes/query_agent_architecture_light.png#gh-light-mode-only "Weaviate Query Agent at a high level")
+![Weaviate Query Agent at a high level](../_includes/query_agent_architecture_dark.png#gh-dark-mode-only "Weaviate Query Agent at a high level")
 
-Query Agent は以下の高レベルステップで動作します。
+ クエリ エージェント は、以下の高レベルな手順に従います。
 
-- 適切な生成モデル（例：大規模言語モデル）を使用してタスクと必要なクエリを分析し、実行すべき正確なクエリを決定します。（ステップ 1 & 2）
-- Weaviate へクエリを送信します。Weaviate は指定された ベクトライザー 統合を用いて必要に応じてクエリをベクトル化します。（ステップ 3–5）
-- Weaviate から結果を受け取り、適切な生成モデルでユーザープロンプト／クエリへの最終回答を生成します。（ステップ 6）
+- 適切な生成モデル（例: 大規模言語モデル）を用いてタスクと必要なクエリを解析し、実行すべき正確なクエリを決定します。（ステップ 1 & 2）
+- Weaviate にクエリを送信します。 Weaviate は指定された ベクトライザー 統合を使用して必要に応じクエリをベクトル化します。（ステップ 3–5）
+- Weaviate から結果を受け取り、適切な生成モデルを用いてユーザーのプロンプト／クエリに対する最終回答を生成します。（ステップ 6）
 
-その後、Query Agent は回答とともに、中間出力として Weaviate から得た検索結果などをユーザーへ返します。
+その後、 クエリ エージェント はユーザーへ回答と、中間出力（ Weaviate からの検索結果など）を返します。
 
-`Query Agent` という用語はシステム全体を指します。Query Agent は複数のサブシステム（マイクロサービスやタスクごとに担当するエージェントなど）で構成されている場合があります。
+`Query Agent` という用語はシステム全体を指します。 クエリ エージェント は複数のサブシステム（マイクロサービスやタスクごとに責任を持つエージェントなど）で構成される場合があります。
 
-![Weaviate Query Agent は複数のエージェントで構成](../_includes/query_agent_info_light.png#gh-light-mode-only "Weaviate Query Agent は複数のエージェントで構成")
-![Weaviate Query Agent は複数のエージェントで構成](../_includes/query_agent_info_dark.png#gh-dark-mode-only "Weaviate Query Agent は複数のエージェントで構成")
+![Weaviate Query Agent comprises multiple agents](../_includes/query_agent_info_light.png#gh-light-mode-only "Weaviate Query Agent comprises multiple agents")
+![Weaviate Query Agent comprises multiple agents](../_includes/query_agent_info_dark.png#gh-dark-mode-only "Weaviate Query Agent comprises multiple agents")
+
+## クエリ
+
+ クエリ エージェント は 2 つのクエリタイプをサポートします。
+
+- **`Search`**: 自然言語で クエリ エージェント を使って Weaviate を検索します。 クエリ エージェント は質問を処理し、 Weaviate で必要な検索を実行し、関連オブジェクトを返します。
+
+- **`Ask`**: 自然言語で クエリ エージェント に質問します。 クエリ エージェント は質問を処理し、 Weaviate で必要な検索を実行して回答を返します。
 
 ## 基本的な使い方
 
-ここでは Weaviate エージェントの利用方法を概観します。詳細は [使用方法](./usage.md) ページをご覧ください。
+以下はこの Weaviate エージェント の使用方法の概要です。詳細は [Usage](./usage.md) ページをご覧ください。
 
-### 前提条件
+:::note Prerequisites
 
-本エージェントは Weaviate Cloud インスタンスと、対応バージョンの Weaviate クライアントライブラリでのみ利用できます。
+このエージェントは、 [Weaviate Cloud](/cloud/index.mdx) インスタンスと、対応するバージョンの Weaviate [client library](./usage.md#client-library) でのみ利用できます。
+
+:::
 
 ### 使用例
 
-Weaviate クライアントのインスタンスを Query Agent に渡すと、Query Agent がクライアントから必要な情報を抽出してクエリを実行します。
+Weaviate クライアントのインスタンスを クエリ エージェント に渡すと、 クエリ エージェント がクエリ実行に必要な情報をクライアントから取得します。
 
 <Tabs groupId="languages">
     <TabItem value="py_agents" label="Python">
@@ -96,29 +92,31 @@ Weaviate クライアントのインスタンスを Query Agent に渡すと、Q
 
 </Tabs>
 
-次に、自然言語のクエリを入力します。Query Agent がクエリを処理し、必要な検索を Weaviate で実行して回答を返します。
+次に、自然言語のクエリを入力します。 クエリ エージェント がクエリを処理し、 Weaviate で必要な検索を実行し、回答を返します。
+
+### `Search` （検索のみ）
 
 <Tabs groupId="languages">
     <TabItem value="py_agents" label="Python">
         <FilteredTextBlock
             text={PyCode}
-            startMarker="# START BasicQuery"
-            endMarker="# END BasicQuery"
+            startMarker="# START BasicSearchQuery"
+            endMarker="# END BasicSearchQuery"
             language="py"
         />
     </TabItem>
     <TabItem value="ts_agents" label="JavaScript/TypeScript">
-        <FilteredTextBlock
+    <FilteredTextBlock
             text={TSCode}
-            startMarker="// START BasicQuery"
-            endMarker="// END BasicQuery"
+            startMarker="// START BasicSearchQuery"
+            endMarker="// END BasicSearchQuery"
             language="ts"
         />
     </TabItem>
 
 </Tabs>
 
-Query Agent はフォローアップクエリも処理でき、前回の応答を追加コンテキストとして利用します。
+ クエリ エージェント はフォローアップ クエリも処理でき、前回の応答を追加コンテキストとして利用します。
 
 <Tabs groupId="languages">
     <TabItem value="py_agents" label="Python">
@@ -130,7 +128,7 @@ Query Agent はフォローアップクエリも処理でき、前回の応答�
         />
     </TabItem>
     <TabItem value="ts_agents" label="JavaScript/TypeScript">
-        <FilteredTextBlock
+    <FilteredTextBlock
             text={TSCode}
             startMarker="// START FollowUpQuery"
             endMarker="// END FollowUpQuery"
@@ -139,16 +137,37 @@ Query Agent はフォローアップクエリも処理でき、前回の応答�
     </TabItem>
 
 </Tabs>
-### 追加ドキュメント
 
-より詳細なエージェントの使用方法については、[使用方法](./usage.md) ページをご覧ください。
+
+
+### `Ask`（回答生成付き）
+
+<Tabs groupId="languages">
+    <TabItem value="py_agents" label="Python">
+        <FilteredTextBlock
+            text={PyCode}
+            startMarker="# START BasicAskQuery"
+            endMarker="# END BasicAskQuery"
+            language="py"
+        />
+    </TabItem>
+    <TabItem value="ts_agents" label="JavaScript/TypeScript">
+     <FilteredTextBlock
+            text={TSCode}
+            startMarker="// START BasicAskQuery"
+            endMarker="// END BasicAskQuery"
+            language="ts"
+        />
+    </TabItem>
+</Tabs>
+
+## 参考資料
+
+この Agent を使う方法の詳細については、[Usage](./usage.md) ページをご覧ください。
 
 ## 質問とフィードバック
 
-:::info 変更履歴とフィードバック
-公式の Weaviate エージェントの変更ログは [こちら](https://weaviateagents.featurebase.app/changelog) でご覧いただけます。ご要望、バグ報告、質問などのフィードバックがある場合は、[こちら](https://weaviateagents.featurebase.app/) からお送りください。フィードバックの状況を確認したり、他の方のフィードバックに投票したりできます。
-:::
-
-import DocsFeedback from '/_includes/docs-feedback.mdx';
+import DocsFeedback from '/\_includes/docs-feedback.mdx';
 
 <DocsFeedback/>
+
