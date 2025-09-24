@@ -1,0 +1,906 @@
+---
+title: コレクション定義
+description: Weaviate のコレクションパラメータのリファレンス。
+---
+
+import SkipLink from "/src/components/SkipValidationLink";
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+import FilteredTextBlock from "@site/src/components/Documentation/FilteredTextBlock";
+import PyCode from "!!raw-loader!/_includes/code/config-refs/reference.collections.py";
+import TSCode from "!!raw-loader!/_includes/code/howto/manage-data.collections.ts";
+import JavaCode from "!!raw-loader!/_includes/code/howto/java/src/test/java/io/weaviate/docs/manage-data.classes.java";
+import JavaReplicationCode from "!!raw-loader!/_includes/code/howto/java/src/test/java/io/weaviate/docs/manage-data.replication.java";
+import GoCode from "!!raw-loader!/_includes/code/howto/go/docs/manage-data.classes_test.go";
+import PyCodeMultiTenancy from "!!raw-loader!/_includes/code/howto/manage-data.multi-tenancy.py";
+import TSCodeMultiTenancy from "!!raw-loader!/_includes/code/howto/manage-data.multi-tenancy.ts";
+import JavaCodeMultiTenancy from "!!raw-loader!/_includes/code/howto/java/src/test/java/io/weaviate/docs/manage-data.multi-tenancy.java";
+import GoCodeMultiTenancy from "!!raw-loader!/_includes/code/howto/go/docs/manage-data.multi-tenancy_test.go";
+
+**コレクション定義** とは、 Weaviate でデータオブジェクトの集合をどのように保存し、インデックス化するかを指定するものです。このページでは、コレクションを設定するために利用できるパラメータについて説明します。
+
+## コレクション定義のパラメータ
+
+コレクションを作成する際に設定できるトップレベルのパラメータです。
+
+| Parameter                                    | Type   | Description                                                                                                                | Default                                                                                                                                                                                               | Mutable       |
+| :------------------------------------------- | :----- | :------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------ |
+| [`class`](#class)                            | String | コレクションの名前。                                                                                                       | (Required)                                                                                                                                                                                            | No            |
+| [`description`](#description)                | String | コレクションの説明。                                                                                                       | `""`                                                                                                                                                                                                  | Yes           |
+| [`properties`](#properties)                  | Array  | データスキーマを定義するプロパティオブジェクトの配列。                                                                      | `[]`                                                                                                                                                                                                  | Partially\*   |
+| [`invertedIndexConfig`](#inverted-index)     | Object | 転置インデックスの設定。フィルタリングとキーワード検索に影響します。                                                        | [Inverted Index reference](./indexing/inverted-index.mdx#inverted-index-parameters) を参照                                                                                                              | Yes           |
+| [`vectorConfig`](#vector-configuration)      | Object | 複数の名前付き ベクトル を設定でき、それぞれに `vectorizer`、`vectorIndexType`、`vectorIndexConfig` を持たせます。             | `null`                                                                                                                                                                                                | Partially\*\* |
+| [`vectorizer`](#vector-configuration)        | String | 使用するベクトライザーモジュール。                                                                                           | [環境変数](/deploy/configuration/env-vars#DEFAULT_VECTORIZER_MODULE) で定義されたデフォルトベクトライザー。モジュール固有のデフォルト設定は [Model provider](../model-providers/index.md) を参照 | No            |
+| [`vectorIndexType`](#vector-configuration)   | String | 使用する ベクトル インデックスのタイプ（`hnsw`、`flat`、`dynamic`）。                                                       | `hnsw`                                                                                                                                                                                                | No            |
+| [`moduleConfig`](#module-configuration)      | Object | モジュール固有の設定。                                                                                                     | [Module configuration](#module-configuration) を参照                                                                                                                                                  | Partially     |
+| [`vectorIndexConfig`](#vector-configuration) | Object | 選択した `vectorIndexType` に固有の設定。                                                                                   | [Vector index reference](./indexing/vector-index.mdx) を参照                                                                                                                                            | Partially     |
+| [`shardingConfig`](#sharding)                | Object | マルチノードクラスタでのシャーディング動作を制御します。                                                                    | [Sharding section](#sharding) を参照                                                                                                                                                                   | No            |
+| [`replicationConfig`](#replication)          | Object | 障害耐性のためのデータレプリケーション設定を制御します。                                                                    | [Replication section](#replication) を参照                                                                                                                                                             | Partially     |
+| [`multiTenancyConfig`](#multi-tenancy)       | Object | コレクションでマルチテナンシーを有効にするための設定。                                                                       | [Multi-tenancy section](#multi-tenancy) を参照                                                                                                                                                         | Partially     |
+
+\* [新しいプロパティを追加できます](../manage-collections/collection-operations.mdx#add-a-property)。既存のプロパティは変更できません。  
+\*\* [新しい名前付き ベクトル を追加できます](../manage-collections/vector-config.mdx#add-new-named-vectors)。一部の ベクトル インデックス設定は変更可能です。  
+
+<details>
+  <summary>例: コレクション設定 - JSON オブジェクト</summary>
+
+プロパティを含む完全なコレクションオブジェクトの例:
+
+```json
+{
+  "class": "Article",                       // The name of the collection in string format
+  "description": "An article",              // A description for your reference
+  "vectorIndexType": "hnsw",                // Defaults to hnsw
+  "vectorIndexConfig": {
+    ...                                     // Vector index type specific settings, including distance metric
+  },
+  "vectorizer": "text2vec-contextionary",   // Vectorizer to use for data objects added to this collection
+  "moduleConfig": {
+    "text2vec-contextionary": {
+      "vectorizeClassName": true            // Include the collection name in vector calculation (default true)
+    }
+  },
+  "properties": [                           // An array of the properties you are adding, same as a Property Object
+    {
+      "name": "title",                     // The name of the property
+      "description": "title of the article",              // A description for your reference
+      "dataType": [                         // The data type of the object as described above. When
+                                            //    creating cross-references, a property can have
+                                            //    multiple data types, hence the array syntax.
+        "text"
+      ],
+      "moduleConfig": {                     // Module-specific settings
+        "text2vec-contextionary": {
+          "skip": true,                     // If true, the whole property will NOT be included in
+                                            //    vectorization. Default is false, meaning that the
+                                            //    object will be NOT be skipped.
+          "vectorizePropertyName": true,    // Whether the name of the property is used in the
+                                            //    calculation for the vector position of data
+                                            //    objects. Default false.
+        }
+      },
+      "indexFilterable": true,              // Optional, default is true. By default each property
+                                            //    is indexed with a roaring bitmap index where
+                                            //     available for efficient filtering.
+      "indexSearchable": true               // Optional, default is true. By default each property
+                                            //    is indexed with a searchable index for
+                                            //    BM25-suitable Map index for BM25 or hybrid
+                                            //    searching.
+    }
+  ],
+  "invertedIndexConfig": {                  // Optional, index configuration
+    "stopwords": {
+      ...                                   // Optional, controls which words should be ignored in the inverted index, see section below
+    },
+    "indexTimestamps": false,               // Optional, maintains inverted indexes for each object by its internal timestamps
+    "indexNullState": false,                // Optional, maintains inverted indexes for each property regarding its null state
+    "indexPropertyLength": false            // Optional, maintains inverted indexes for each property by its length
+  },
+  "shardingConfig": {
+    ...                                     // Optional, controls behavior of the collection in a
+                                            //    multi-node setting, see section below
+  },
+  "multiTenancyConfig": {"enabled": true}   // Optional, for enabling multi-tenancy for this
+                                            //    collection (default: false)
+}
+```
+
+</details>
+
+#### コード例 - コレクションの作成方法
+
+次のコード例は、クライアントライブラリを通じてコレクションパラメータを設定する方法を示しています。
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python クライアント v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START BasicCreateCollection"
+      endMarker="# END BasicCreateCollection"
+      language="py"
+    />
+  </TabItem>
+  <!-- <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START BasicCreateCollection"
+      endMarker="// END BasicCreateCollection"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaCode}
+      startMarker="// START BasicCreateCollection"
+      endMarker="// END BasicCreateCollection"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START BasicCreateCollection"
+      endMarker="// END BasicCreateCollection"
+      language="gonew"
+    />
+  </TabItem> -->
+</Tabs>
+
+:::tip 参考リソース
+
+より多くのコード例や設定ガイドについては、[How-to: コレクションの管理](../manage-collections/index.mdx) を参照してください。
+
+:::
+
+#### `class`
+
+`class` はコレクションの名前です。
+
+コレクション名は大文字から始めます。これは、名前がプロパティ値として使用される際にプリミティブデータ型と区別するためです。
+
+`dataType` プロパティを使用した次の例を考えてみましょう:
+
+- `dataType: ["text"]` は `text` データ型です。
+- `dataType: ["Text"]` は `Text` という名前のコレクションへのクロスリファレンスタイプです。
+
+最初の文字以降は、 GraphQL 互換の任意の文字を使用できます。
+
+コレクション名を検証する正規表現は `/^[A-Z][_0-9A-Za-z]*$/` です。
+
+import InitialCaps from "/_includes/schemas/initial-capitalization.md";
+
+<InitialCaps />
+
+#### `description`
+
+コレクションの説明です。これは参照用であり、[ Weaviate Agents](/docs/agents/index.md) に追加情報を提供することもできます。
+
+---
+
+### プロパティ
+
+| Parameter                                | 型      | 説明                                                                                                                                                           | デフォルト    | 変更可 |
+| :--------------------------------------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- | :---- |
+| [`name`](#name)                          | String  | プロパティの名前です。                                                                                                                                        | (必須)       | いいえ |
+| [`dataType`](./datatypes.md)             | Array   | 1 つ以上のデータタイプを含む配列です。クロスリファレンスには、コレクション名を大文字で指定します (例: `["Article"]`)。                                          | (必須)       | いいえ |
+| `description`                            | String  | 参照用のプロパティの説明です。                                                                                                                                  | `null`      | はい   |
+| [`tokenization`](#tokenization)          | String  | `text` プロパティに対して、転置インデックス用にテキストをトークンに分割する方法を指定します。                                                                   | `word`      | いいえ |
+| [`indexInverted`](#inverted-index)       | Boolean | `true` の場合、このプロパティに転置インデックスを有効にします。                                                                                                 | `true`      | いいえ |
+| [`indexFilterable`](#inverted-index)     | Boolean | `true` の場合、高速フィルタリングを可能にする Roaring Bitmap インデックスを構築します。                                                                         | `true`      | いいえ |
+| [`indexSearchable`](#inverted-index)     | Boolean | `true` の場合、BM25 やハイブリッド検索に適した検索可能な map インデックスを構築します。                                                                          | `true`      | いいえ |
+| [`indexRangeFilters`](#inverted-index)   | Boolean | `true` の場合、数値の範囲フィルタリング用に Roaring Bitmap インデックスを構築します。                                                                           | `false`     | いいえ |
+| [`invertedIndexConfig`](#inverted-index) | Object  | `bm25` パラメーターなど、転置インデックス設定をプロパティ単位で上書きします。                                                                                   | `{}`        | いいえ |
+| `moduleConfig`                           | Object  | このプロパティのベクトル化をスキップするなど、モジュール固有の設定です。                                                                                        | `{}`        | いいえ |
+
+<details>
+  <summary>プロパティ構成例 - JSON オブジェクト</summary>
+
+完全なプロパティオブジェクトの例:
+
+```json
+{
+  "name": "title", // The name of the property
+  "description": "title of the article", // A description for your reference
+  "dataType": [
+    // The data type of the object as described above. When creating cross-references, a property can have multiple dataTypes.
+    "text"
+  ],
+  "tokenization": "word", // Split field contents into word-tokens when indexing into the inverted index. See "Property Tokenization" below for more detail.
+  "moduleConfig": {
+    // Module-specific settings
+    "text2vec-contextionary": {
+      "skip": true, // If true, the whole property is NOT included in vectorization. Default is false, meaning that the object will be NOT be skipped.
+      "vectorizePropertyName": true // Whether the name of the property is used in the calculation for the vector position of data objects. Default false.
+    }
+  },
+  "indexFilterable": true, // Optional, default is true. By default each property is indexed with a roaring bitmap index where available for efficient filtering.
+  "indexSearchable": true // Optional, default is true. By default each property is indexed with a searchable index for BM25-suitable Map index for BM25 or hybrid searching.
+}
+```
+
+</details>
+
+#### コード例 - コレクションプロパティ設定方法
+
+次のコード例は、クライアントライブラリを使用してプロパティパラメーターを設定する方法を示しています。
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START CreateCollectionWithProperties"
+      endMarker="# END CreateCollectionWithProperties"
+      language="py"
+    />
+  </TabItem>
+  <!-- <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START CreateCollectionWithProperties"
+      endMarker="// END CreateCollectionWithProperties"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaCode}
+      startMarker="// START CreateCollectionWithProperties"
+      endMarker="// END CreateCollectionWithProperties"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START CreateCollectionWithProperties"
+      endMarker="// END CreateCollectionWithProperties"
+      language="gonew"
+    />
+  </TabItem> -->
+</Tabs>
+
+:::tip さらに学ぶ
+
+その他のコード例や設定ガイドについては、[How-to: Manage collections](../manage-collections/index.mdx) セクションをご覧ください。
+
+:::
+
+#### `name`
+
+プロパティ名には次の文字が使用できます: `/[_A-Za-z][_0-9A-Za-z]*/`.
+
+##### 予約語
+
+以下の語は予約されているため、プロパティ名として使用できません。
+
+- `_additional`
+- `id`
+- `_id`
+
+また、将来の予約語と衝突する可能性があるため、次の語をプロパティ名として使用しないことを強く推奨します。
+
+- `vector`
+- `_vector`
+
+#### `tokenization`
+
+`text` データのトークナイゼーションと転置インデックスへの登録方法をカスタマイズできます。トークナイゼーションは、[`bm25`](../api/graphql/search-operators.md#bm25) や [`hybrid`](../api/graphql/search-operators.md#hybrid) オペレーター、[`where` フィルター](../api/graphql/filters.md) の結果に影響します。
+
+トークナイゼーションは `text` プロパティのプロパティレベル設定です。[クライアントライブラリを使用して tokenization オプションを設定する方法](../manage-collections/vector-config.mdx#property-level-settings) を参照してください。
+
+<details>
+  <summary>プロパティ構成例 - JSON オブジェクト</summary>
+
+```json
+{
+  "classes": [
+    {
+      "class": "Question",
+      "properties": [
+        {
+          "dataType": ["text"],
+          "name": "question",
+          // highlight-start
+          "tokenization": "word"
+          // highlight-end
+        },
+      ],
+      ...
+      "vectorizer": "text2vec-openai"
+    }
+  ]
+}
+```
+
+</details>
+
+各トークンは転置インデックスに個別に登録されます。例えば、`text` プロパティの値が `Hello, (beautiful) world` の場合、トークナイゼーション方法ごとに次のように登録されます。
+
+import TokenizationDefinition from "/_includes/tokenization_definition.mdx";
+
+<TokenizationDefinition />
+
+##### トークナイゼーションと検索／フィルタリング
+
+トークナイゼーションはフィルターやキーワード検索の挙動にも影響します。フィルターやキーワード検索クエリも、インデックスと照合される前に同じトークナイゼーションが適用されます。
+
+次の表は、`text` プロパティの値が `Hello, (beautiful) world` のとき、フィルターやキーワード検索でヒットするかどうかを示した例です。
+
+- **行**: さまざまなトークナイゼーション方法  
+- **列**: さまざまな検索文字列  
+
+|                  | `Beautiful` | `(Beautiful)` | `(beautiful)` | `Hello, (beautiful) world` |
+| ---------------- | ----------- | ------------- | ------------- | -------------------------- |
+| `word` (default) | ✅          | ✅            | ✅            | ✅                         |
+| `lowercase`      | ❌          | ✅            | ✅            | ✅                         |
+| `whitespace`     | ❌          | ❌            | ✅            | ✅                         |
+| `field`          | ❌          | ❌            | ❌            | ✅                         |
+
+<details>
+  <summary>`gse` と `trigram` トークナイゼーション方法</summary>
+
+:::info `1.24` で追加
+:::
+
+日本語および中国語のテキストには、`gse` または `trigram` トークナイゼーション方法の使用を推奨します。これらの言語は空白で簡単に区切れないため、他の方法よりも適切に動作します。
+
+`gse` トークナイザーはリソース節約のためデフォルトではロードされません。使用するには、Weaviate インスタンスで環境変数 `ENABLE_TOKENIZER_GSE` を `true` に設定してください。
+
+`gse` トークナイゼーション例:
+
+- `"素早い茶色の狐が怠けた犬を飛び越えた"`: `["素早", "素早い", "早い", "茶色", "の", "狐", "が", "怠け", "けた", "犬", "を", "飛び", "飛び越え", "越え", "た", "素早い茶色の狐が怠けた犬を飛び越えた"]`
+- `"すばやいちゃいろのきつねがなまけたいぬをとびこえた"`: `["すばや", "すばやい", "やい", "いち", "ちゃ", "ちゃい", "ちゃいろ", "いろ", "のき", "きつ", "きつね", "つね", "ねが", "がな", "なま", "なまけ", "まけ", "けた", "けたい", "たい", "いぬ", "を", "とび", "とびこえ", "こえ", "た", "すばやいちゃいろのきつねがなまけたいぬをとびこえた"]`
+
+</details>
+
+<details>
+  <summary>`kagome_ja` トークナイゼーション方法</summary>
+
+:::caution 実験的機能  
+`v1.28.0` 以降で利用可能です。慎重にご利用ください。  
+:::
+
+日本語テキストには `kagome_ja` トークナイゼーション方法も利用できます。これは日本語 [MeCab IPA](https://github.com/ikawaha/kagome-dict/) 辞書を使用した [`Kagome` トークナイザー](https://github.com/ikawaha/kagome?tab=readme-ov-file) でテキストを分割します。
+
+`kagome_ja` トークナイザーもリソース節約のためデフォルトではロードされません。使用するには、Weaviate インスタンスで環境変数 `ENABLE_TOKENIZER_KAGOME_JA` を `true` に設定してください。
+
+`kagome_ja` トークナイゼーション例:
+
+- `"春の夜の夢はうつつよりもかなしき 夏の夜の夢はうつつに似たり 秋の夜の夢はうつつを超え 冬の夜の夢は心に響く 山のあなたに小さな村が見える 川の音が静かに耳に届く 風が木々を通り抜ける音 星空の下、すべてが平和である"`:
+  - [`"春", "の", "夜", "の", "夢", "は", "うつつ", "より", "も", "かなしき", "\n\t", "夏", "の", "夜", "の", "夢", "は", "うつつ", "に", "似", "たり", "\n\t", "秋", "の", "夜", "の", "夢", "は", "うつつ", "を", "超え", "\n\t", "冬", "の", "夜", "の", "夢", "は", "心", "に", "響く", "\n\n\t", "山", "の", "あなた", "に", "小さな", "村", "が", "見える", "\n\t", "川", "の", "音", "が", "静か", "に", "耳", "に", "届く", "\n\t", "風", "が", "木々", "を", "通り抜ける", "音", "\n\t", "星空", "の", "下", "、", "すべて", "が", "平和", "で", "ある"`]
+- `"素早い茶色の狐が怠けた犬を飛び越えた"`:
+  - `["素早い", "茶色", "の", "狐", "が", "怠け", "た", "犬", "を", "飛び越え", "た"]`
+- `"すばやいちゃいろのきつねがなまけたいぬをとびこえた"`:
+  - `["すばやい", "ちゃ", "いろ", "の", "きつね", "が", "なまけ", "た", "いぬ", "を", "とびこえ", "た"]`
+
+</details>
+
+<details>
+  <summary>`kagome_kr` トークナイゼーション方法</summary>
+
+:::caution 実験的機能  
+`v1.25.7` 以降で利用可能です。慎重にご利用ください。  
+:::
+
+韓国語テキストには `kagome_kr` トークナイゼーション方法の使用を推奨します。これは Korean MeCab ([mecab-ko-dic](https://bitbucket.org/eunjeon/mecab-ko-dic/src/master/)) 辞書を使用した [`Kagome` トークナイザー](https://github.com/ikawaha/kagome?tab=readme-ov-file) でテキストを分割します。
+
+`kagome_kr` トークナイザーもリソース節約のためデフォルトではロードされません。使用するには、Weaviate インスタンスで環境変数 `ENABLE_TOKENIZER_KAGOME_KR` を `true` に設定してください。
+
+`kagome_kr` トークナイゼーション例:
+
+- `"아버지가방에들어가신다"`:
+  - `["아버지", "가", "방", "에", "들어가", "신다"]`
+- `"아버지가 방에 들어가신다"`:
+  - `["아버지", "가", "방", "에", "들어가", "신다"]`
+- `"결정하겠다"`:
+  - `["결정", "하", "겠", "다"]`
+
+</details>
+
+<details>
+  <summary>`gse` と `Kagome` トークナイザーの数を制限する</summary>
+
+`gse` および `Kagome` トークナイザーはリソースを多く消費し、Weaviate のパフォーマンスに影響を与える可能性があります。  
+[`TOKENIZER_CONCURRENCY_COUNT` 環境変数](/deploy/configuration/env-vars/index.md) を使用して、同時に実行できる `gse` と `Kagome` トークナイザーの合計数を制限できます。
+
+</details>
+
+---
+
+### 転置インデックス {#inverted-index}
+
+ Weaviate は、高速かつ効率的なフィルタリングと検索を実現するために **転置インデックス** を使用します。転置インデックスは値 (単語や数値など) をそれを含むオブジェクトにマッピングすることで、属性ベースのフィルタリング ( `where` フィルター) やキーワード検索 ( `bm25`、`hybrid` ) を高速化します。クエリを行わないプロパティのインデックス作成を無効にすると、データインポートが高速化され、ディスク使用量を削減できます。
+
+ `indexFilterable`、`indexSearchable`、`indexRangeFilters`、`invertedIndexConfig` パラメーターの詳細については、[リファレンス: 転置インデックス](./indexing/inverted-index.mdx) を参照してください。
+
+---
+
+### ベクトル設定
+
+ Weaviate では、ベクトル設定に 2 つのアプローチをサポートしています:
+
+- **単一ベクトルコレクション**: 上位レベルのパラメーター ( `vectorizer`、`vectorIndexType`、`vectorIndexConfig` ) を使用し、オブジェクトごとに 1 つのベクトル空間
+- **複数の名前付きベクトル**: `vectorConfig` パラメーターを使用し、オブジェクトごとに複数のベクトル空間 (**推奨**)
+
+同じコレクション内で両方のアプローチを併用することはできません。
+
+:::tip `vectorConfig` の使用を推奨します
+
+`vectorConfig` パラメーターを使用すると、まずコレクションあたり 1 つのベクトルから始め、後から[新しい名前付きベクトル](../manage-collections/vector-config.mdx#add-new-named-vectors) を追加できます。
+
+:::
+
+#### ベクトル設定パラメーター
+
+| パラメーター                                                               | 型     | 説明                                                                                                                                                                   | デフォルト               | 変更可        |
+| :----------------------------------------------------------------------- | :----- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------- | :------------ |
+| `vectorizer`                                                             | String | 使用するベクトライザーモジュール (例: `text2vec-cohere`)。自動ベクトル化を無効にするには `none` を設定します。 [利用可能なモデルプロバイダー](../model-providers/index.md) | モジュール固有のデフォルト | No            |
+| [`vectorIndexType`](./indexing/vector-index.mdx)                         | String | ベクトルインデックスタイプ: `hnsw` (デフォルト)、`flat`、`dynamic`                                                                                                   | `hnsw`                  | No            |
+| [`vectorIndexConfig`](./indexing/vector-index.mdx)                       | Object | 選択した `vectorIndexType` 用の設定                                                                                                                                   | インデックス固有のデフォルト | 一部\*        |
+| `vectorConfig`                                                           | Object | **上記の代替**: 複数の名前付きベクトル空間を定義します                                                                                                                 | `null`                  | 一部\*\*      |
+| ↪ `vectorConfig.<name>.vectorizer`                                       | Object | この名前付きベクトル用のベクトライザー設定 (例: `{"text2vec-openai": {"properties": ["title"]}}`)                                                                      | (必須)                  | No            |
+| [↪ `vectorConfig.<name>.vectorIndexType`](./indexing/vector-index.mdx)   | String | この名前付きベクトル用のインデックスタイプ                                                                                                                             | `hnsw`                  | No            |
+| [↪ `vectorConfig.<name>.vectorIndexConfig`](./indexing/vector-index.mdx) | Object | この名前付きベクトル用のインデックス設定                                                                                                                               | インデックス固有のデフォルト | 一部\*        |
+
+\* [ベクトルインデックスの変更可能パラメーター](./indexing/vector-index.mdx) を参照  
+\*\* コレクション作成後に[新しい名前付きベクトルを追加](../manage-collections/vector-config.mdx#add-new-named-vectors)できます
+
+#### 単一ベクトルコレクション
+
+コレクション定義で [名前付きベクトル](#named-vectors) を明示的に定義しない場合、 Weaviate は自動的に _単一ベクトル_ コレクションを作成します。これらのベクトルは内部的に予約済みベクトル名 `default` の下に保存されます。
+
+データのどのプロパティがベクトル化されるかを確認するには、[セマンティックインデックスの設定](./indexing/vector-index.mdx#configure-semantic-indexing) セクションを参照してください。
+
+##### コード例 - 単一ベクトルコレクションを作成する方法
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START Vectorizer"
+      endMarker="# END Vectorizer"
+      language="py"
+    />
+  </TabItem>
+  <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START Vectorizer"
+      endMarker="// END Vectorizer"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaCode}
+      startMarker="// START CreateCollectionWithVectorizer"
+      endMarker="// END CreateCollectionWithVectorizer"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START CreateCollectionWithVectorizer"
+      endMarker="// END CreateCollectionWithVectorizer"
+      language="gonew"
+    />
+  </TabItem>
+</Tabs>
+
+:::tip 参考資料
+
+より多くのコード例や設定ガイドについては、[How-to: Vectorizer and vector index config](../manage-collections/vector-config.mdx) ガイドを参照してください。
+
+:::
+
+#### 複数ベクトル埋め込み (名前付きベクトル) {#named-vectors}
+
+import MultiVectorSupport from "/_includes/multi-vector-support.mdx";
+
+<MultiVectorSupport />
+
+##### コード例 - 複数の名前付きベクトルを作成する方法
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START MultipleVectors"
+      endMarker="# END MultipleVectors"
+      language="py"
+    />
+  </TabItem>
+  <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START BasicNamedVectors"
+      endMarker="// END BasicNamedVectors"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaCode}
+      startMarker="// START CreateCollectionWithNamedVectors"
+      endMarker="// END CreateCollectionWithNamedVectors"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START CreateCollectionWithNamedVectors"
+      endMarker="// END CreateCollectionWithNamedVectors"
+      language="gonew"
+    />
+  </TabItem>
+</Tabs>
+
+:::tip 参考資料
+
+より多くのコード例や設定ガイドについては、[How-to: Vectorizer and vector index config](../manage-collections/vector-config.mdx) ガイドを参照してください。
+
+:::
+
+---
+
+### モジュール設定
+
+`moduleConfig` パラメーターでは、ベクトライザーがベクトル計算にコレクション名を含めるか除外するかを指定できます（デフォルト `true`）。また、コレクション単位でリランカーおよび生成 [モデルプロバイダー](../model-providers/index.md) を指定する際にも使用します。
+
+<details>
+  <summary>モジュール設定の例 - JSON オブジェクト</summary>
+
+完全な `moduleConfig` オブジェクトの例:
+
+```json
+  "moduleConfig": {
+    "text2vec-contextionary": {
+      "vectorizeClassName": true  // Include the collection name in vector calculation (default true)
+    }
+  },
+```
+
+</details>
+
+---
+
+### ベクトル インデックス {#vector-index}
+
+ベクトル インデックスは、ベクトル データを整理し、類似検索を高速かつ効率的に行えるようにします。クエリをすべてのベクトルと比較する代わりに、インデックスは検索対象を最も関連性の高い候補へ迅速に絞り込みます。
+
+`vectorIndexType` と `vectorIndexConfig` パラメーターの詳細については、[リファレンス: ベクトル インデックス](./indexing/vector-index.mdx) を参照してください。
+
+---
+
+### レプリケーション
+
+<RaftRFChangeWarning />
+
+[レプリケーション](/deploy/configuration/replication.md) の設定は、`replicationConfig` パラメーターを通じて定義で指定できます。
+
+| パラメーター          | 型      | 説明                                                                                                                                                           | デフォルト                   | 変更可能                                 |
+| :------------------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------- | :-------------------------------------- |
+| `factor`           | Integer | 各シャードで保持するコピー（レプリカ）の数。`3` の場合はプライマリ 1 つとレプリカ 2 つになります。                                                               | `1`                         | `v1.25+` では不可、それ以前のバージョンでは可 |
+| `asyncEnabled`     | Boolean | 非同期レプリケーションを有効にします。`v1.26` で追加されました。                                                                                                 | `false`                     | 可                                       |
+| `deletionStrategy` | String  | レプリケーションでの削除処理戦略。`NoAutomatedResolution`、`DeleteOnConflict`、`TimeBasedResolution` から選択します。`v1.27` で追加されました。                 | `"NoAutomatedResolution"`   | 可                                       |
+
+<details>
+  <summary>レプリケーション設定の例 - JSON オブジェクト</summary>
+
+完全な `replicationConfig` オブジェクトの例:
+
+```json
+{
+  "class": "Article",
+  "vectorizer": "text2vec-openai",
+  // highlight-start
+  "replicationConfig": {
+    "factor": 3,
+    "asyncEnabled": false,
+    "deletionStrategy": "NoAutomatedResolution"
+  }
+  // highlight-end
+}
+```
+
+</details>
+
+#### コード例 - レプリケーション設定
+
+以下のコード例は、クライアント ライブラリを使用してレプリケーション パラメーターを設定する方法を示しています。
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START AllReplicationSettings"
+      endMarker="# END AllReplicationSettings"
+      language="py"
+    />
+  </TabItem>
+  <!-- <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START AllReplicationSettings"
+      endMarker="// END AllReplicationSettings"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaReplicationCode}
+      startMarker="// START AllReplicationSettings"
+      endMarker="// END AllReplicationSettings"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START AllReplicationSettings"
+      endMarker="// END AllReplicationSettings"
+      language="gonew"
+    />
+  </TabItem> -->
+</Tabs>
+
+:::tip 参考リソース
+
+追加のコード例や設定ガイドについては、[How-to: コレクションの管理](../manage-collections/index.mdx) を参照してください。
+
+:::
+
+---
+
+### シャーディング
+
+シャーディングは、コレクション定義の `shardingConfig` オブジェクトを通じて設定します。これらのパラメーターはイミュータブルで、コレクション作成後に変更できません。
+
+| パラメーター             | 型      | 説明                                                                                                                                                               | デフォルト           | 変更可能 |
+| :----------------------- | :------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :------ |
+| `desiredCount`        | Integer | コレクション用に作成する物理シャードの希望数。この値がクラスターノード数より大きい場合、一部のノードは複数のシャードをホストします。                               | ノード数             | 不可     |
+| `virtualPerPhysical`  | Integer | 物理シャード 1 つあたりの仮想シャード数。仮想シャードはリバランス時のデータ移動を削減するのに役立ちます。                                                             | `128`               | 不可     |
+| `strategy`            | String  | オブジェクトが属するシャードを決定する戦略。現在サポートされているのは `"hash"` のみで、`key` プロパティを基にハッシュを計算します。                                   | `"hash"`            | 不可     |
+| `key`                 | String  | シャード決定のためのハッシュに使用するプロパティ。現在はオブジェクトの内部 UUID (`_id`) のみが使用できます。                                                         | `"_id"`             | 不可     |
+| `function`            | String  | `key` に適用するハッシュ関数。現在サポートされているのは `"murmur3"` のみで、64 ビット ハッシュを生成し、衝突の可能性を極めて低くします。                               | `"murmur3"`         | 不可     |
+| `actualCount`         | Integer | **(読み取り専用)** 実際に作成された物理シャード数。通常は `desiredCount` と一致しますが、作成時に問題が発生した場合は異なる可能性があります。                         | `1`                 | 不可     |
+| `desiredVirtualCount` | Integer | **(読み取り専用)** `desiredCount * virtualPerPhysical` で計算される値です。                                                                                           | `128`               | 不可     |
+| `actualVirtualCount`  | Integer | **(読み取り専用)** 実際に作成された仮想シャード数。                                                                                                                     | `128`               | 不可     |
+
+<details>
+  <summary>シャーディング設定の例 - JSON オブジェクト</summary>
+
+完全な `shardingConfig` オブジェクトの例:
+
+```json
+  "shardingConfig": {
+    "virtualPerPhysical": 128,
+    "desiredCount": 1,           // defaults to the amount of Weaviate nodes in the cluster
+    "actualCount": 1,
+    "desiredVirtualCount": 128,
+    "actualVirtualCount": 128,
+    "key": "_id",
+    "strategy": "hash",
+    "function": "murmur3"
+  }
+```
+
+</details>
+
+#### コード例 - シャーディング設定
+
+以下のコード例は、クライアント ライブラリを使用してシャーディング パラメーターを設定する方法を示しています。
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCode}
+      startMarker="# START ShardingSettings"
+      endMarker="# END ShardingSettings"
+      language="py"
+    />
+  </TabItem>
+  <!-- <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCode}
+      startMarker="// START ShardingSettings"
+      endMarker="// END ShardingSettings"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaReplicationCode}
+      startMarker="// START ShardingSettings"
+      endMarker="// END ShardingSettings"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCode}
+      startMarker="// START ShardingSettings"
+      endMarker="// END ShardingSettings"
+      language="gonew"
+    />
+  </TabItem> -->
+</Tabs>
+
+:::tip 参考リソース
+
+追加のコード例や設定ガイドについては、[How-to: コレクションの管理](../manage-collections/index.mdx) を参照してください。
+
+:::
+
+---
+
+### マルチテナンシー
+
+マルチテナンシーを使用すると、1 つのコレクション内でデータを分離し、オブジェクトを特定のテナントに関連付けることができます。これは SaaS アプリケーションや、厳格なデータ分割が必要なシステムを構築する際に役立つ機能です。
+
+:::note マルチテナンシーを使用する理由
+
+テナントごとに別々のコレクションを作成するよりも低いオーバーヘッドでデータを分離できるため、多数のテナントがある場合でもスケーラブルです。
+
+:::
+
+マルチテナンシーを有効にするには、`multiTenancyConfig` オブジェクト内の `enabled` キーを `true` に設定します。このパラメーターは不変であり、作成時に設定する必要があります。
+
+| パラメーター              | 型      | 説明                                                                                                                                                                           | デフォルト | 変更可 |
+| :----------------------- | :------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------- | :----- |
+| `enabled`                | Boolean | `true` の場合、コレクションでマルチテナンシーを有効にします。                                                                                                                   | `false`    | No     |
+| `autoTenantCreation`     | Boolean | `true` の場合、存在しないテナントにオブジェクトを挿入しようとすると新しいテナントが作成されます。`v1.25` で追加                                                                  | `false`    | Yes    |
+| `autoTenantActivation`   | Boolean | `true` の場合、検索・読み取り・更新・削除操作が行われた際に `INACTIVE` または `OFFLOADED` テナントを自動的にアクティブ化します。`v1.25.2` で追加                               | `false`    | Yes    |
+
+#### コード例 - マルチテナンシー設定
+
+<Tabs groupId="languages">
+  <TabItem value="py" label="Python Client v4">
+    <FilteredTextBlock
+      text={PyCodeMultiTenancy}
+      startMarker="# START EnableMultiTenancy"
+      endMarker="# END EnableMultiTenancy"
+      language="py"
+    />
+  </TabItem>
+  <!-- <TabItem value="js" label="JS/TS Client v3">
+    <FilteredTextBlock
+      text={TSCodeMultiTenancy}
+      startMarker="// START EnableMultiTenancy"
+      endMarker="// END EnableMultiTenancy"
+      language="ts"
+    />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <FilteredTextBlock
+      text={JavaCodeMultiTenancy}
+      startMarker="// START EnableMultiTenancy"
+      endMarker="// END EnableMultiTenancy"
+      language="java"
+    />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <FilteredTextBlock
+      text={GoCodeMultiTenancy}
+      startMarker="// START EnableMultiTenancy"
+      endMarker="// END EnableMultiTenancy"
+      language="go"
+    />
+  </TabItem> -->
+</Tabs>
+
+:::tip 追加リソース
+
+詳細なコード例や設定ガイドについては、[How-to: コレクション管理](../manage-collections/index.mdx) セクションをご覧ください。
+
+:::
+
+## 変更可否
+
+コレクションを作成した後でも、一部のパラメーターは変更できますが、すべてではありません。変更できないパラメーターを修正するには、データをエクスポートし、新しいコレクションを作成してデータをインポートしてください。その際、[コレクションエイリアス](../starter-guides/managing-collections/index.mdx#migration-workflow-with-collection-aliases) を使用するとダウンタイムなしで移行できます。
+
+<details>
+  <summary>変更可能なパラメーター</summary>
+
+import RaftRFChangeWarning from "/_includes/1-25-replication-factor.mdx";
+
+<!-- Note: remove below "(not mutable in `v1.25`)" note when the feature is released. -->
+
+<RaftRFChangeWarning />
+
+import CollectionMutableParameters from "/_includes/collection-mutable-parameters.mdx";
+
+<CollectionMutableParameters />
+
+</details>
+
+コレクション作成後に[新しいプロパティを追加](../manage-collections/collection-operations.mdx#add-a-property)することはできますが、既存のプロパティを変更することはできません。また、[新しい名前付きベクトルを追加](../concepts/data.md#adding-a-named-vector-after-collection-creation)することも可能です。
+
+## オートスキーマ
+
+「オートスキーマ」機能は、追加されるデータからパラメーターを推測し、コレクション定義を自動生成します。デフォルトで有効になっており、`docker-compose.yml` などで環境変数 [`AUTOSCHEMA_ENABLED`](/docs/deploy/configuration/env-vars/index.md#AUTOSCHEMA_ENABLED) を `'false'` に設定することで無効化できます。
+
+この機能は以下を行います。
+
+- 既存しないコレクションにオブジェクトが追加された場合、コレクションを作成します。
+- 追加されるオブジェクトに存在しないプロパティがある場合、それを追加します。
+- `int[]`, `text[]`, `number[]`, `boolean[]`, `date[]`, `object[]` などの配列データ型を推測します。
+- `object` および `object[]` のデータ型に対してネストされたプロパティを推測します。
+- 追加されるオブジェクトに既存スキーマ型と競合するプロパティが含まれる場合、エラーを返します（例: `int` として定義済みのフィールドにテキストをインポートしようとした場合）。
+
+:::tip 本番環境ではコレクションを手動定義することを推奨
+
+一般的に、本番環境ではオートスキーマを無効にし、手動でコレクションを定義することを推奨します。
+
+- 手動定義のほうがより細かい制御が可能です。
+- インポート時にデータ構造を推測するためのパフォーマンスコストが発生します。特に複雑なネスト構造の場合、コストが高くなる場合があります。
+
+:::
+
+#### オートスキーマのデータ型
+
+オートスキーマがニーズに合ったプロパティを推測できるよう、追加設定が利用できます。
+
+- `AUTOSCHEMA_DEFAULT_NUMBER=number` - 数値を見つけた際に `number` 列を作成します（`int` などではなく）。
+- `AUTOSCHEMA_DEFAULT_DATE=date` - 日付らしい値を見つけた際に `date` 列を作成します。
+
+以下は許可されません。
+
+- 2 つのサポート対象である `phoneNumber` または `geoCoordinates` のいずれにも明確に一致しないマップ型は使用できません。
+- 参照型であることが明確でない限り、配列型は使用できません。この場合、Weaviate はビーコンを解決し、そのビーコンが属するコレクション名を取得する必要があります。これはスキーマを変更するために必要です。
+
+## コレクション数の上限 {#collections-count-limit}
+
+:::info `v1.30` で追加
+:::
+
+最適なパフォーマンスを確保するため、Weaviate は **ノードあたりのコレクション数を制限** します。各コレクションはインデックス作成、定義管理、ストレージの面でオーバーヘッドを追加するため、この制限により高いパフォーマンスを維持します。
+
+- **デフォルト上限**: `1000` コレクション
+- **上限の変更方法**: 環境変数 [`MAXIMUM_ALLOWED_COLLECTIONS_COUNT`](/deploy/configuration/env-vars/index.md#MAXIMUM_ALLOWED_COLLECTIONS_COUNT) を使用してコレクション数の上限を調整できます。
+
+:::note
+すでに上限を超えている場合、Weaviate は新しいコレクションの作成を許可しません。既存のコレクションは削除されません。
+:::
+
+:::tip
+**コレクション数の上限を引き上げる代わりに、アーキテクチャの再検討をお勧めします**。詳細は [Starter Guides: Scaling limits with collections](../starter-guides/managing-collections/collections-scaling-limits.mdx) をご覧ください。
+:::
+
+
+
+## コレクション エイリアス
+
+:::caution Technical preview
+
+コレクション エイリアスは **`v1.32`** で **テクニカル プレビュー**として追加されました。<br/><br/>
+これは、機能がまだ開発中であり、将来のリリースで破壊的変更を含む変更が行われる可能性があることを意味します。  
+**現時点では本機能を本番環境で使用することは推奨しません。**
+
+:::
+
+コレクション エイリアスは、 Weaviate コレクションの別名であり、別名を使ってコレクションを参照できます。  
+
+Weaviate はエイリアスのリクエストを自動的にターゲット コレクションへルーティングします。これにより、コレクション名が必要な場所であればどこでもエイリアスを使用できます。これには [コレクション管理](../manage-collections/index.mdx)、[クエリ](../search/index.mdx) など、特定のコレクション名を必要とするすべての操作が含まれますが、コレクションの削除だけは例外です。コレクションを削除するには、そのコレクション名を使用する必要があります。コレクションを削除しても、それを指すエイリアスは自動的に削除されません。  
+
+エイリアス名は一意でなければならず（既存のコレクションや他のエイリアスと重複できません）、複数のエイリアスを同じコレクションに割り当てることも可能です。コレクション エイリアスは [クライアント ライブラリからプログラムで](../manage-collections/collection-aliases.mdx)設定するか、<SkipLink href="/weaviate/api/rest#tag/aliases">REST エンドポイント</SkipLink>を使用して設定できます。  
+
+コレクション エイリアスを管理するには、適切な `Collection aliases` 権限が必要です。エイリアスが参照する元のコレクションを管理する場合、そのコレクションに対する `Collections` 権限も必要です。
+
+## 参考リソース
+
+- [スターター ガイド: コレクション定義](/weaviate/starter-guides/managing-collections)
+- [操作方法: コレクションの管理](../manage-collections/index.mdx)
+- [コンセプト: データ構造](/weaviate/concepts/data)
+- <SkipLink href="/weaviate/api/rest#tag/schema">
+    REST API: コレクション定義（スキーマ）
+  </SkipLink>
+
+## ご質問とフィードバック
+
+import DocsFeedback from "/_includes/docs-feedback.mdx";
+
+<DocsFeedback />
+
