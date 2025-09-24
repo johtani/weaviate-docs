@@ -81,8 +81,17 @@ const sidebars = {
         type: "doc",
         id: "weaviate/best-practices/index",
       },
-      items: ["weaviate/best-practices/code-generation"],
+      items: []
     },
+    {
+      type: "category",
+      label: "AI-based code generation",
+      link: {
+        type: "doc",
+        id: "weaviate/best-practices/code-generation",
+      },
+      items: []
+    }
   ],
   modelProvidersSidebar: [
     {
@@ -569,6 +578,12 @@ const sidebars = {
           id: "weaviate/config-refs/distances",
           className: "sidebar-item",
         },
+        {
+          type: "link",
+          label: "Environment variables",
+          href: "https://docs.weaviate.io/deploy/configuration/env-vars",
+          className: "sidebar-item",
+        },
       ],
     },
     {
@@ -773,11 +788,6 @@ const sidebars = {
         {
           type: "doc",
           id: "deploy/installation-guides/embedded",
-          className: "sidebar-item",
-        },
-        {
-          type: "doc",
-          id: "deploy/installation-guides/spcs-integration",
           className: "sidebar-item",
         },
         {
