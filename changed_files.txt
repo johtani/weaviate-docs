@@ -1,0 +1,13 @@
+docs/agents/_includes/query_agent.mts
+docs/agents/query/index.md
+docs/agents/query/usage.md
+docs/deploy/aws/img/deployment-matrix.png
+docs/deploy/aws/index.md
+docs/deploy/aws/net-security-bp.md
+docs/deploy/configuration/env-vars/runtime-config.md
+docs/deploy/tutorials/rbac.mdx
+docs/weaviate/model-providers/_includes/provider.generative.ts
+docs/weaviate/model-providers/_includes/provider.vectorizer.ts
+docs/weaviate/model-providers/gpt4all/index.md
+docs/weaviate/model-providers/xai/generative.md
+docs/weaviate/search/hybrid.md
